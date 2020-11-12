@@ -1,0 +1,406 @@
+---
+title: "Bernoulli example"
+output: html_notebook
+---
+
+```{r}
+library(latex2exp)
+```
+
+### Bernoulli example
+
+### ABC Richard 
+
+```{r}
+
+n=100 #data
+data <- rbinom(1,n,0.5)  # corrupted data 
+
+samps <-c()
+ab<-c()
+i<-1
+r <- 0.02
+
+while(i<10000) {
+  theta <- runif(1,0,1)
+  #r ~ rexp(1, 1/0.05)
+  X<- rbinom(1,n, theta)
+  
+  if(abs(X/n-data/n)**2<r) { #here with a uniform prior on theta, we use a distance to retrieve the theta that generates the data, we do not use the idea of corruption
+    ab[i]<-abs(X/n-data/n)
+    samps[i] <- theta
+    i <- i+1
+  }
+}
+
+
+```
+
+
+```{r}
+hist(samps, probability=TRUE, 30, main='Histogram theta')
+
+theta_samps<- seq(0.1,0.8,0.0001)
+lines(theta_samps, dbeta(theta_samps, shape1=data+1, shape2=n-data+1), col='red', main='Beta posterior', xlab='samples')
+
+```
+
+
+### My code
+
+
+```{r}
+
+n=100#size data
+# Simulate some data
+set.seed(1)
+data <- rbinom(1,n,0.5)  #data 
+
+i<-1
+stand_post <- c()
+coarsened_post <- c()
+
+theta <- seq(0,1,1/500)
+
+alpha <- 1250
+
+for(th in theta){
+  stand_post[i] <- dbeta(th, shape1=data+1, shape2=n-data+1)
+  alphan <- 1/(1/n+1/alpha)
+  coarsened_post[i] <- dbeta(th, shape1=data*alphan/n+1, shape2=-data*alphan/n+1+alphan)
+  i <- i+1
+}
+
+plot(theta,stand_post, col='blue', type='l', xlab=TeX('$\\theta$'), ylab = 'Posterior')
+lines(theta,coarsened_post, col='red')
+
+legend(0.55, 24, legend=c("Standard Posterior", "Coarsened Posterior"),
+       col=c("blue", "red"), lty=1, cex=0.8,box.lty=0)
+title('Exact Posterior for n = 1000')
+
+
+
+```
+
+```{r}
+#x <- rbeta(n, data+1,n-data+1)
+#curve(dbeta(x,data+1,n-data+1))
+
+
+n=10000#size data
+# Simulate some data
+set.seed(1)
+data <- rbinom(1,n,0.5)  #data 
+
+i<-1
+stand_post <- c()
+coarsened_post <- c()
+
+theta <- seq(0,1,1/500)
+
+alpha <- 1250
+
+for(th in theta){
+  stand_post[i] <- dbeta(th, shape1=data+1, shape2=n-data+1)
+  alphan <- 1/(1/n+1/alpha)
+  coarsened_post[i] <- dbeta(th, shape1=data*alphan/n+1, shape2=-data*alphan/n+1+alphan)
+  i <- i+1
+}
+
+plot(theta,stand_post, col='blue', type='l', xlab=TeX('$\\theta$'), ylab = 'Posterior')
+lines(theta,coarsened_post, col='red')
+
+legend(0.55, 24, legend=c("Standard Posterior", "Coarsened Posterior"),
+       col=c("blue", "red"), lty=1, cex=0.8,box.lty=0)
+title('Exact Posterior for n = 10000')
+```
+
+
+```{r}
+#mean and variance beta distribution EXACT 
+mean_beta <-function(alpha, beta ){
+  return((alpha)/(alpha+beta))
+}
+
+var_beta <- function(alpha, beta){
+  return((alpha*beta)/((alpha+beta)**2*(alpha+beta+1)))
+}
+
+alpha_standpost <-data+1
+beta_standpost <- n-data+1
+
+alpha_coarspost <-data*alphan/n+1
+beta_coarspost <- -data*alphan/n+1+alphan
+
+
+mean_stand_post_exact <- mean_beta(alpha_standpost,beta_standpost )
+mean_coars_post_exact <- mean_beta(alpha_coarspost, beta_coarspost)
+
+
+var_stand_post_exact <- var_beta(alpha_standpost,beta_standpost )
+var_coars_post_exact <-  var_beta(alpha_coarspost,beta_coarspost)
+
+```
+
+
+```{r}
+print(c(mean_stand_post_exact, var_stand_post_exact))
+print(c(mean_coars_post_exact, var_coars_post_exact))
+```
+
+
+### Impact of n 
+
+```{r}
+nlist=seq(100, 5000, 5000/100)#size data
+# Simulate some data
+set.seed(1)
+theta <- seq(0,1,1/500)
+```
+
+
+```{r}
+var_stand_post <-c()
+var_coarsened_post <- c()
+
+i<-1
+for (n in nlist){
+  data <- rbinom(1,n,0.5)  #data 
+  alphan <- 1/(1/n+1/1250)
+  alpha_coarspost <-data*alphan/n+1
+  beta_coarspost <- -data*alphan/n+1+alphan
+  alpha_standpost <-data+1
+  beta_standpost <- n-data+1
+  var_stand_post[i] <- var_beta(alpha_standpost,beta_standpost )
+  var_coarsened_post[i]<-var_beta(alpha_coarspost,beta_coarspost)
+  i<-i+1
+}
+
+
+
+
+plot(nlist, var_stand_post, type='l',col='blue',xlab='n', ylab =TeX('$\\sigma^2$'))
+lines(nlist, var_coarsened_post, type='l',col='red')
+
+legend(3000, 0.0019, legend=c("Standard Posterior", "Coarsened Posterior"),col=c("blue", "red"), lty=1, cex=0.8,box.lty=0)
+title('Variance for both posterior')
+
+
+```
+```{r}
+mean(var_coarsened_post)
+mean(var_stand_post)
+0.02**2
+
+1/(1250**2)
+```
+```{r}
+sd(var_stand_post)
+sd(var_coarsened_post)
+```
+
+I know that my data are corrupted from a certain epsilon distance, the coarsened posterior will be more uncertain than the standard posterior. 
+
+
+
+###  Influence of alpha/epsilon
+
+```{r}
+epsilon<-  c(0.02, 0.1, 0.2, 1)
+theta <- seq(0,1,1/500)
+alphalist <- 1/(2*epsilon**2)
+n=1000#size data
+# Simulate some data
+set.seed(1)
+data <- rbinom(1,n,0.5)  #data 
+
+```
+
+
+
+
+```{r}
+stand_post <-c()
+coarsened_post <- matrix(NA, nrow=n, ncol=length(alphalist))
+
+
+simsp<- function(theta){
+  return(dbeta(theta, shape1=data+1, shape2=n-data+1))
+}
+
+stand_post <-lapply(theta, simsp)
+
+
+sim<- function(theta, alpha){
+  alphan <- 1/(1/n+1/alpha)
+  return(dbeta(theta, shape1=data*alphan/n+1, shape2=-data*alphan/n+1+alphan))
+}
+
+coarsened_post <- outer(theta, alphalist, sim)
+
+
+
+
+plot(theta,coarsened_post[,1], col='blue', type='l', xlab=TeX('$\\theta$'), ylab = 'Posterior')
+lines(theta,coarsened_post[,2], col='red', type='l', xlab=TeX('$\\theta$'), ylab = 'Posterior')
+lines(theta,coarsened_post[,3], col='green', type='l', xlab=TeX('$\\theta$'), ylab = 'Posterior')
+lines(theta,coarsened_post[,4], col='purple', type='l', xlab=TeX('$\\theta$'), ylab = 'Posterior')
+
+
+legend(0.55, 14, legend=c(TeX("$\\alpha =1250$"), TeX("$\\alpha = 50$"),TeX("$\\alpha = 12.5 $"),TeX("$\\alpha = 0.5$")),
+col=c("blue", "red",'green','purple'), lty=1, cex=0.8,box.lty=0)
+
+
+title('Exact Posterior for n = 1000')
+
+```
+
+
+```{r}
+x <- seq(0,5,1/100)
+
+expdis <-function(alpha, x){
+  return(dexp(x, rate = alpha, log = FALSE))
+}
+
+dis <- outer(alphalist, x, expdis)
+
+plot(x, dis[4,], col='purple', type='l', xlab=TeX('x'), ylab = 'Density')
+lines(x, dis[3,], col='green', type='l', xlab=TeX('x'), ylab = 'Density')
+lines(x, dis[2,], col='red', type='l', xlab=TeX('x'), ylab = 'Density')
+lines(x, dis[1,], col='blue', type='l', xlab=TeX('x'), ylab = 'Density')
+
+
+legend(3,0.5, legend=c(TeX("$\\alpha = 1250$"), TeX("$\\alpha = 50$"),TeX("$\\alpha = 12.5 $"),TeX("$\\alpha = 0.5$")),
+col=c("blue", "red",'green','purple'), lty=1, cex=0.8,box.lty=0)
+
+
+title('Exponential Density')
+
+
+
+
+```
+
+
+A small epsilon gives a high alpha which automatically leads to a higher restriction. 
+
+
+
+
+### Compare with ABC
+
+What is the link with ABC?
+An algo that gives coarsened simular outputs?
+
+```{r}
+n=1000 #size data
+# Simulate some data
+set.seed(1)
+data <- rbinom(1,n,0.5)  #data 
+
+samps <-c()
+i<-1
+
+alpha <- 12500
+r <- rexp(1, alpha)
+
+while(i<n) {
+  theta <- runif(1,0,1)
+  
+  X <- rbinom(1,n, theta)
+  
+  if(2*abs(X/n-data/n)**2<r) { #here with a uniform prior on theta, we use a distance to retrieve the theta that generates the data, we do not use the idea of corruption
+    
+    samps[i] <- theta
+    i <- i+1
+  }
+}
+
+
+```
+
+
+alpha high means alphan = n so both posterior identical.
+
+
+
+
+```{r}
+hist(samps, probability=TRUE, 30, main='ABC Posterior',ylim = c(0,300),xlim=c(0.45,0.55),  xlab=TeX('$\\theta$'))
+
+theta_samps<- seq(0.1,0.8,0.0001)
+
+alphan <- 1/(1/n+1/alpha)
+lines(theta_samps, dbeta(theta_samps, shape1=data+1, shape2=n-data+1), col='blue', main='Beta standard posterior', xlab=TeX('$\\theta$'))
+
+lines(theta_samps, dbeta(theta_samps, shape1=data*alphan/n+1, shape2=-data*alphan/n+1+alphan), col='red', main='Beta coarsened posterior')
+
+
+legend(0.505, 240, legend=c("Standard", "Coarsened"),
+       col=c("blue", "red"), lty=1, cex=0.8,box.lty=0)
+
+```
+alpha high means alphan = n so both posterior identical.
+
+
+
+```{r}
+n=100000 #size data
+# Simulate some data
+set.seed(1)
+data <- rbinom(1,n,0.5)  #data 
+samps <-c()
+i<-1
+alpha <- 1250
+r <- rexp(1, alpha)
+while(i<n) {
+  theta <- runif(1,0,1)
+  
+  X <- rbinom(1,n, theta)
+  
+  if(2*abs(X/n-data/n)**2<r) { #here with a uniform prior on theta, we use a distance to retrieve the theta that generates the data, we do not use the idea of corruption
+    
+    samps[i] <- theta
+    i <- i+1
+  }
+}
+```
+
+
+
+```{r}
+hist(samps, probability=TRUE, 30, main='ABC Posterior',ylim = c(0,300),xlim=c(0.45,0.55),  xlab=TeX('$\\theta$'))
+
+theta_samps<- seq(0.1,0.8,0.0001)
+
+alphan <- 1/(1/n+1/alpha)
+lines(theta_samps, dbeta(theta_samps, shape1=data+1, shape2=n-data+1), col='blue', main='Beta standard posterior', xlab=TeX('$\\theta$'))
+
+lines(theta_samps, dbeta(theta_samps, shape1=data*alphan/n+1, shape2=-data*alphan/n+1+alphan), col='red', main='Beta coarsened posterior')
+
+
+legend(0.505, 240, legend=c("Standard", "Coarsened"),
+       col=c("blue", "red"), lty=1, cex=0.8,box.lty=0)
+
+```
+Both are doing badly. 
+
+With ABC, I still keep some uncertainty. 
+ABC is integrating some corruption.
+
+Choice of R
+Nonetheless, in all such previous research, a fixed power is used, rather than one tending to 0 as n → ∞.
+The exponential diatribution is useful to get the approximation used for the coarsened posterior. 
+
+Use something different than an exponential law ? 
+
+Questions
+Is it useful for outliers ?
+A similar example with a Gaussian distribution?
+
+
+
+
+
+
